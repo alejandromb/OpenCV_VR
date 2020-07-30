@@ -10,11 +10,11 @@ class VideoRecorder2():
     # Define the codec and create VideoWriter object
     def __init__(self,filename):
         self.open=True
-        self.cap=cv2.VideoCapture("test1.mp4")
-        #self.cap=cv2.VideoCapture(0)    
+        #self.cap=cv2.VideoCapture(filename)
+        self.cap=cv2.VideoCapture(0)    
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.out = cv2.VideoWriter(filename+".mp4",self.fourcc, 30, (640,480))
-        self.capture_time=20
+        self.capture_time=30
         self.start_time=time.time()
         self.image_coordinates=[(0,640),(0,480)]
         self.selected_ROI=False
@@ -78,10 +78,10 @@ class VideoRecorder2():
                 break   
 
     def display_cut(self):
-        cv2.setMouseCallback('frame', self.extract_coordinates)    
+         
 
           
-        while(self.cap.isOpened() and int(time.time()-self.start_time)<self.capture_time):
+        while(self.cap.isOpened()):
             ret, frame = self.cap.read()
             
             if ret==True:
@@ -93,7 +93,7 @@ class VideoRecorder2():
 
                 #cv2.selectROI(frame)
                 
-                
+                cv2.setMouseCallback('frame', self.extract_coordinates)   
                 cv2.imshow('frame',frame)
                      
                 
@@ -106,7 +106,7 @@ class VideoRecorder2():
                     y2 = self.image_coordinates[1][1]
 
                     ROIframe=frame[y1:y2,x1:x2]
-                
+                    print(x1,x2,y1,y2)
                     
                     cv2.imshow('frame2',ROIframe)
                 
@@ -121,49 +121,83 @@ class VideoRecorder2():
                 break  
            
     def record_ifcontour(self):
-        baseline_image=None
+        previous_frame=None
+        flag=0
+        
           
         while(self.cap.isOpened() and int(time.time()-self.start_time)<self.capture_time):
 
             ret, frame = self.cap.read()
+            
            
          
             if ret==True:
             #rotating frame
                 frame = cv2.flip(frame,180)
-                #ROIframe=frame[0:720, 480:720] 
 
-                gray_frame=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+                x1 = 0
+                x2 = 105
+                y1 = 0
+                y2 = 421
+
+                ROIframe=frame[y1:y2,x1:x2] 
+
+                gray_frame=cv2.cvtColor(ROIframe,cv2.COLOR_BGR2GRAY)
                 gray_frame=cv2.GaussianBlur(gray_frame,(25,25),0)
-                if baseline_image is None:
-                    baseline_image=gray_frame
+                if previous_frame is None:
+                    previous_frame=gray_frame
                     continue
 
 
                 #Calculating the difference and image thresholding
               
 
-                delta=cv2.absdiff(baseline_image,gray_frame)
+                delta=cv2.absdiff(previous_frame,gray_frame)
+                previous_frame=gray_frame
                 threshold=cv2.threshold(delta,35,255, cv2.THRESH_BINARY)[1]
+                #threshold=cv2.adaptiveThreshold(delta,300,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
                 
                 # Finding all the contours
                 (contours,_)=cv2.findContours(threshold,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 # Drawing rectangles bounding the contours (whose area is > 5000)
+               
                 for contour in contours:
 
-                    if cv2.contourArea(contour) < 10000:
-                        pass
-                    else:
-                        print("writer record")
+                    if cv2.contourArea(contour)>5000:
+                        
+                        
                         self.out.write(frame)
+                        
+                        flag=1                      
+                                  
+
+                    else:
+                        
+                        pass
+
+
+                
+
                     (x, y, w, h)=cv2.boundingRect(contour)
                     cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 1)
+                
+                #keep recording for a 10 seconds more 30fps
+                if flag>0 and flag < 300:
+                    self.out.write(frame)
+                    flag=flag+1
+                    print("wiritg frame",flag)
+
+                else:
+                    flag=0
+                
+                
 
 
-                cv2.imshow("gray_frame Frame",gray_frame)
+                #cv2.imshow("gray_frame Frame",gray_frame)
                 cv2.imshow("Delta Frame",delta)
                 cv2.imshow("Threshold Frame",threshold)
                 cv2.imshow("Color Frame",frame)
+                cv2.imshow("ROI Frame",ROIframe)
 
             
               
@@ -268,11 +302,11 @@ class VideoRecorder2():
                 # Drawing rectangles bounding the contours (whose area is > 5000)
                 for contour in contours:
 
-                    if cv2.contourArea(contour) < 10000:
+                    if cv2.contourArea(contour) < 15000:
                         pass
                     else:
                         print("writer record")
-                        #self.out.write(frame)
+                        self.out.write(frame)
                     (x, y, w, h)=cv2.boundingRect(contour)
                     cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,0), 1)
 
@@ -292,8 +326,8 @@ class VideoRecorder2():
                 break  
 
 
-VR1=VideoRecorder2("testDIsplay")
-VR1.analyze_video()
+#VR1=VideoRecorder2("test1")
+#VR1.display_cut()
 #VR1.record_ifcontour()
 
 
