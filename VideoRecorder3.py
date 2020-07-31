@@ -78,11 +78,13 @@ class VideoRecorder2():
                 break   
 
     def display_cut(self):
+        
          
 
           
         while(self.cap.isOpened()):
             ret, frame = self.cap.read()
+            
             
             if ret==True:
             #rotating frame
@@ -135,10 +137,10 @@ class VideoRecorder2():
             #rotating frame
                 frame = cv2.flip(frame,180)
 
-                x1 = 0
-                x2 = 105
-                y1 = 0
-                y2 = 421
+                x1 = 126
+                x2 = 195
+                y1 = 70
+                y2 = 435
 
                 ROIframe=frame[y1:y2,x1:x2] 
 
@@ -154,7 +156,7 @@ class VideoRecorder2():
 
                 delta=cv2.absdiff(previous_frame,gray_frame)
                 previous_frame=gray_frame
-                threshold=cv2.threshold(delta,35,255, cv2.THRESH_BINARY)[1]
+                threshold=cv2.threshold(delta,20,255, cv2.THRESH_BINARY)[1]
                 #threshold=cv2.adaptiveThreshold(delta,300,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
                 
                 # Finding all the contours
@@ -163,7 +165,7 @@ class VideoRecorder2():
                
                 for contour in contours:
 
-                    if cv2.contourArea(contour)>5000:
+                    if cv2.contourArea(contour)>2000:
                         
                         
                         self.out.write(frame)
@@ -209,7 +211,86 @@ class VideoRecorder2():
                  #   pass
             else:
                 print("exit")
+                self.stop()
                 break
+    def record_if_deviation(self):
+        sdThresh = 10
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        flag=0
+
+        cv2.namedWindow('frame')
+        cv2.namedWindow('dist')
+
+        #Manually set ROI coordinates
+        x1 = 0
+        x2 = 105
+        y1 = 0
+        y2 = 435
+
+        _, frame1 = self.cap.read()
+        _, frame2 = self.cap.read()
+        frame1=frame1[y1:y2,x1:x2]
+        frame2=frame2[y1:y2,x1:x2]       
+
+        while(self.cap.isOpened() and int(time.time()-self.start_time)<self.capture_time):
+
+            ret,frame=self.cap.read()
+
+            if  ret== True:
+                ROIframe=frame[y1:y2,x1:x2] 
+
+                frame3 = ROIframe
+                rows, cols, _ = np.shape(frame3)
+                cv2.imshow('dist', frame3)
+                dist = self.distMap(frame1, frame3)
+
+                frame1 = frame2
+                frame2 = frame3
+
+                # apply Gaussian smoothing
+                mod = cv2.GaussianBlur(dist, (9,9), 0)
+
+                # apply thresholding
+                _, thresh = cv2.threshold(mod, 100, 255, 0)
+
+                # calculate st dev test
+                _, stDev = cv2.meanStdDev(mod)
+
+                cv2.imshow('dist', mod)
+                cv2.putText(frame2, "Standard Deviation - {}".format(round(stDev[0][0],0)), (70, 70), font, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                if stDev > sdThresh:
+
+                    #print("Motion detected.. Do something!!!");
+                    self.out.write(frame)
+                    flag=1     
+
+            
+                #saving 10 segs after motion detected
+
+                if flag>0 and flag < 300:
+                    self.out.write(frame)
+                    flag=flag+1
+                    print("wiritg frame",flag)
+
+                else:
+                    flag=0
+
+                cv2.imshow('frame', frame)
+                if cv2.waitKey(1) & 0xFF == 27:
+                    break
+            else:
+                self.stop()
+
+        
+    def distMap(self,frame1, frame2):
+        """outputs pythagorean distance between two frames"""
+        frame1_32 = np.float32(frame1)
+        frame2_32 = np.float32(frame2)
+        diff32 = frame1_32 - frame2_32
+        norm32 = np.sqrt(diff32[:,:,0]**2 + diff32[:,:,1]**2 + diff32[:,:,2]**2)/np.sqrt(255**2 + 255**2 + 255**2)
+        dist = np.uint8(norm32*255)
+        return dist
+
     def extract_coordinates(self, event, x, y, flags, parameters):
             # Record starting (x,y) coordinates on left mouse button click
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -302,7 +383,7 @@ class VideoRecorder2():
                 # Drawing rectangles bounding the contours (whose area is > 5000)
                 for contour in contours:
 
-                    if cv2.contourArea(contour) < 15000:
+                    if cv2.contourArea(contour) < 2000:
                         pass
                     else:
                         print("writer record")
@@ -326,8 +407,8 @@ class VideoRecorder2():
                 break  
 
 
-#VR1=VideoRecorder2("test1")
-#VR1.display_cut()
+VR1=VideoRecorder2("test1")
+VR1.record_if_deviation()
 #VR1.record_ifcontour()
 
 
