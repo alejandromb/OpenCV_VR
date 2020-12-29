@@ -19,7 +19,7 @@ class VideoRecorder2():
         self.image_coordinates=[(0,640),(0,480)]
         self.selected_ROI=False
       
- 
+   
 
     def setcaptime(self,captime):
         self.capture_time=captime
@@ -213,6 +213,8 @@ class VideoRecorder2():
                 print("exit")
                 self.stop()
                 break
+
+
     def record_if_deviation(self):
         sdThresh = 10
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -229,15 +231,19 @@ class VideoRecorder2():
 
         _, frame1 = self.cap.read()
         _, frame2 = self.cap.read()
-        frame1=frame1[y1:y2,x1:x2]
-        frame2=frame2[y1:y2,x1:x2]       
+
+        #uncomment these lines to select a Region of Interest
+       # frame1=frame1[y1:y2,x1:x2]
+       # frame2=frame2[y1:y2,x1:x2]       
 
         while(self.cap.isOpened() and int(time.time()-self.start_time)<self.capture_time):
 
             ret,frame=self.cap.read()
 
             if  ret== True:
-                ROIframe=frame[y1:y2,x1:x2] 
+
+                #ROIframe=frame[y1:y2,x1:x2]   # uncomment this line to select a ROI area
+                ROIframe=frame
 
                 frame3 = ROIframe
                 rows, cols, _ = np.shape(frame3)
@@ -280,6 +286,76 @@ class VideoRecorder2():
                     break
             else:
                 self.stop()
+
+    def photo_if_deviation(self):
+        count=0
+        sdThresh = 10
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        flag=0
+
+        cv2.namedWindow('frame')
+        cv2.namedWindow('dist')
+
+        #Manually set ROI coordinates
+        x1 = 0
+        x2 = 105
+        y1 = 0
+        y2 = 435
+
+        _, frame1 = self.cap.read()
+        _, frame2 = self.cap.read()
+
+        #uncomment these lines to select a Region of Interest
+       # frame1=frame1[y1:y2,x1:x2]
+       # frame2=frame2[y1:y2,x1:x2]       
+
+        while(self.cap.isOpened()):
+
+            ret,frame=self.cap.read()
+
+            if  ret== True:
+
+                #ROIframe=frame[y1:y2,x1:x2]   # uncomment this line to select a ROI area
+                ROIframe=frame
+
+                frame3 = ROIframe
+                rows, cols, _ = np.shape(frame3)
+                cv2.imshow('dist', frame3)
+                dist = self.distMap(frame1, frame3)
+
+                frame1 = frame2
+                frame2 = frame3
+
+                # apply Gaussian smoothing
+                mod = cv2.GaussianBlur(dist, (9,9), 0)
+
+                # apply thresholding
+                _, thresh = cv2.threshold(mod, 100, 255, 0)
+
+                # calculate st dev test
+                _, stDev = cv2.meanStdDev(mod)
+
+                cv2.imshow('dist', mod)
+                #cv2.putText(frame2, "Standard Deviation - {}".format(round(stDev[0][0],0)), (70, 70), font, 1, (255, 0, 255), 1, cv2.LINE_AA)
+                if stDev > sdThresh:
+
+                    #print("Motion detected.. Do something!!!");
+                    cv2.imwrite("frame%d.jpg" % count, frame)
+                    count=count+1
+
+                    flag=1     
+
+            
+                #saving 10 segs after motion detected
+
+               
+
+                cv2.imshow('frame', frame)
+                if cv2.waitKey(1) & 0xFF == 27:
+                    break
+            else:
+                self.stop()
+
 
         
     def distMap(self,frame1, frame2):
@@ -407,8 +483,9 @@ class VideoRecorder2():
                 break  
 
 
+
 VR1=VideoRecorder2("test1")
-VR1.record_if_deviation()
+VR1.photo_if_deviation()
 #VR1.record_ifcontour()
 
 
