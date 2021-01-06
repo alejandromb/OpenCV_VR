@@ -13,7 +13,7 @@ class VideoRecorder2():
         #self.cap=cv2.VideoCapture(filename)
         self.cap=cv2.VideoCapture(0)    
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self.out = cv2.VideoWriter(filename+".mp4",self.fourcc, 30, (640,480))
+        #self.out = cv2.VideoWriter(filename+".mp4",self.fourcc, 30, (640,480))
         self.capture_time=30
         self.start_time=time.time()
         self.image_coordinates=[(0,640),(0,480)]
@@ -216,7 +216,7 @@ class VideoRecorder2():
 
 
     def record_if_deviation(self):
-        sdThresh = 10
+        sdThresh = 2
         font = cv2.FONT_HERSHEY_SIMPLEX
         flag=0
 
@@ -350,12 +350,7 @@ class VideoRecorder2():
 
                
 
-                cv2.imshow('frame', frame)
-                if cv2.waitKey(1) & 0xFF == 27:
-                    break
-            else:
-                self.stop()
-
+             
 
         
     def distMap(self,frame1, frame2):
@@ -483,10 +478,6 @@ class VideoRecorder2():
                 break  
 
 
-
-VR1=VideoRecorder2("test1")
-VR1.photo_if_deviation()
-#VR1.record_ifcontour()
 
 
 
